@@ -1,0 +1,34 @@
+Deploy.py code explanation :
+
+DEPLOYMENT SCRIPT EXPLANATION:
+
+1. CLEANUP PHASE:
+The script starts by deleting any existing 'lambda-package' folder and 'lambda-deployment.zip'. 
+This ensures you are building from scratch and don't include old, broken, or cached files 
+from previous failed attempts.
+
+2. DOCKERIZED INSTALLATION (THE FIX):
+The script runs a 'docker run' command using the official 'public.ecr.aws/lambda/python:3.12' image.
+- Why? AWS Lambda runs on a specific version of Amazon Linux. If you install 'mangum' on 
+  Windows/Mac, it might not work on Linux.
+- The Command: It mounts your current folder into the container and runs 'pip install'.
+- The Target: It uses the '--target /var/task/lambda-package' flag to force all libraries 
+  (like mangum) to be installed into a local folder instead of a system directory.
+- Architecture: It forces '--platform linux/amd64' to ensure the library is compatible 
+  with standard Lambda functions.
+
+3. ASSEMBLY:
+Once the libraries are installed, the script copies your local source code files 
+('server.py' and 'lambda_handler.py') and your 'data' directory into the 'lambda-package' 
+folder. This places your code and its dependencies in the exact same directory.
+
+4. ZIP CREATION (STRUCTURE FIX):
+The script uses 'zipfile' and 'os.walk' to bundle everything inside 'lambda-package'.
+- Crucial Step: It uses 'os.path.relpath' to ensure that when you open the zip file, 
+  'mangum' and 'lambda_handler.py' are at the ROOT level. 
+- If they were nested inside a subfolder, Lambda wouldn't be able to find the 'mangum' module.
+
+5. FINAL OUTPUT:
+It outputs 'lambda-deployment.zip'. When you upload this file to the AWS Console, 
+the 'import mangum' statement will finally work because the library is now physically 
+present and compiled for the correct operating system.
